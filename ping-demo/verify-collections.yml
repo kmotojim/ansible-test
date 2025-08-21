@@ -1,44 +1,68 @@
 ---
-- name: Dump environment & project tree
+- name: Probe and verify collections
   hosts: all
   gather_facts: false
   tasks:
     - name: Show ansible & galaxy context
-      command: bash -lc '
-        echo "[whoami] $(whoami)";
-        echo "[pwd] $(pwd)";
-        echo "[python] $(python --version 2>&1)";
-        echo "[ansible] $(ansible --version | head -1)";
-        echo "[galaxy path] $(ansible-config dump | grep -E "^DEFAULT_COLLECTIONS_PATHS|^COLLECTIONS_PATHS")";
-        echo "--- /runner/project"; ls -la;
-        echo "--- /runner/"; ls -la;
-        echo "--- requirements.yml"; cat requirements.yml 2>/dev/null || true;
-        echo "--- collections/requirements.yml"; cat collections/requirements.yml 2>/dev/null || true;
-        echo "--- galaxy list"; ansible-galaxy collection list 2>&1 || true
-      '
+      shell: |
+        set -eu
+        echo "[whoami] $(whoami)"
+        echo "[pwd] $(pwd)"
+        echo "[python] $(python --version 2>&1)"
+        echo "[ansible] $(ansible --version | head -1)"
+        echo "[galaxy path]"
+        ansible-config dump | grep -E '^(DEFAULT_COLLECTIONS_PATHS|COLLECTIONS_PATHS)'
+        echo "--- /runner/project"
+        ls -la
+        echo "--- /runner/"
+        ls -la /runner
+        echo "--- requirements.yml (root)"
+        [ -f requirements.yml ] && sed -n '1,200p' requirements.yml || true
+        echo "--- collections/requirements.yml"
+        [ -f collections/requirements.yml ] && sed -n '1,200p' collections/requirements.yml || true
+        echo "--- galaxy list (pre)"
+        ansible-galaxy collection list 2>&1 || true
+      args:
+        executable: /bin/bash
       register: probe
-    - debug: var=probe.stdout_lines
-- name: Verify collections are available
-  hosts: all
-  gather_facts: false
-  tasks:
+    - debug:
+        var: probe.stdout_lines
+
     - name: Show what Controller copied into /runner/project
-      command: bash -lc 'pwd; ls -la; echo "---"; ls -la collections || true; echo "---"; cat requirements.yml || true; echo "---"; cat collections/requirements.yml || true'
+      shell: |
+        set -eu
+        pwd
+        ls -la
+        echo "--- collections dir"
+        ls -la collections || true
+      args:
+        executable: /bin/bash
       register: lsout
     - debug:
         var: lsout.stdout_lines
-    - name: Generate a random string (community.general)
+
+    # デバッグ用：見つかったら明示的にインストール
+    - name: Install collections explicitly if requirements are present
+      shell: |
+        set -euxo pipefail
+        if [ -f collections/requirements.yml ]; then
+          ansible-galaxy collection install \
+            -r collections/requirements.yml \
+            -p /runner/collections --force
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Generate a random string
       community.general.random_string:
         length: 12
       register: rnd
-
     - debug:
         var: rnd
 
-    - name: Read mounts info (ansible.posix)
+    - name: Read mounts info
       ansible.posix.find_mounts:
         paths: ["/"]
       register: mounts
-
     - debug:
         msg: "Root FS type is {{ mounts.mounts[0].fstype }}"
