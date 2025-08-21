@@ -1,4 +1,23 @@
 ---
+- name: Dump environment & project tree
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Show ansible & galaxy context
+      command: bash -lc '
+        echo "[whoami] $(whoami)";
+        echo "[pwd] $(pwd)";
+        echo "[python] $(python --version 2>&1)";
+        echo "[ansible] $(ansible --version | head -1)";
+        echo "[galaxy path] $(ansible-config dump | grep -E "^DEFAULT_COLLECTIONS_PATHS|^COLLECTIONS_PATHS")";
+        echo "--- /runner/project"; ls -la;
+        echo "--- /runner/"; ls -la;
+        echo "--- requirements.yml"; cat requirements.yml 2>/dev/null || true;
+        echo "--- collections/requirements.yml"; cat collections/requirements.yml 2>/dev/null || true;
+        echo "--- galaxy list"; ansible-galaxy collection list 2>&1 || true
+      '
+      register: probe
+    - debug: var=probe.stdout_lines
 - name: Verify collections are available
   hosts: all
   gather_facts: false
