@@ -1,0 +1,25 @@
+---
+- name: Verify collections are available
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Show what Controller copied into /runner/project
+      command: bash -lc 'pwd; ls -la; echo "---"; ls -la collections || true; echo "---"; cat requirements.yml || true; echo "---"; cat collections/requirements.yml || true'
+      register: lsout
+    - debug:
+        var: lsout.stdout_lines
+    - name: Generate a random string (community.general)
+      community.general.random_string:
+        length: 12
+      register: rnd
+
+    - debug:
+        var: rnd
+
+    - name: Read mounts info (ansible.posix)
+      ansible.posix.find_mounts:
+        paths: ["/"]
+      register: mounts
+
+    - debug:
+        msg: "Root FS type is {{ mounts.mounts[0].fstype }}"
