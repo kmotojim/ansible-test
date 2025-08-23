@@ -1,4 +1,6 @@
 ---
 collections:
   - name: community.general
+    version: 9.4.0
+    source: https://rhel9ansible.kmotojim.local:8444/api/galaxy/content/community/
   - name: ansible.posix
