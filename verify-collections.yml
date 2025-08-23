@@ -1,43 +1,16 @@
----
-- name: Verify PAH collections
-  hosts: all
+# verify.yml
+- name: Verify collections usage
+  hosts: localhost
   gather_facts: false
-  collections:
-    - community.general
-    - ansible.posix
+
+  vars:
+    rand_len: 12
+
   tasks:
-    - name: Show collection paths
-      ansible.builtin.debug:
-        var: ansible_env.ANSIBLE_COLLECTIONS_PATHS
+    - name: Generate a random string via lookup
+      set_fact:
+        my_random: "{{ lookup('community.general.random_string', 'length=' ~ rand_len) }}"
 
-    - name: ansible-doc in EE
-      ansible.builtin.command: ansible-doc -t module community.general.random_string
-      register: doc
-      changed_when: false
-
-    - name: Show ansible-doc output
-      ansible.builtin.debug:
-        var: doc.stdout
-
-    - name: Generate a random string (community.general)
-      community.general.random_string:
-        length: 12
-      register: rnd
-
-    - name: Show random (dump everything to see structure)
-      ansible.builtin.debug:
-        var: rnd
-
-    # 文字列だけ欲しい場合（どちらか入っている方を表示）
-    - name: Show random string (portable)
-      ansible.builtin.debug:
-        msg: "{{ rnd.random | default(rnd.result) }}"
-
-    - name: Read root fs type (ansible.posix)
-      ansible.posix.find_mounts:
-        paths: ['/']
-      register: mounts
-
-    - name: Show fs type
-      ansible.builtin.debug:
-        msg: "Root FS type is {{ mounts.mounts[0].fstype }}"
+    - name: Show it
+      debug:
+        msg: "random = {{ my_random }}"
