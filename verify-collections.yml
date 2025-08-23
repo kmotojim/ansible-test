@@ -8,23 +8,30 @@
   tasks:
     - name: Show collection paths
       ansible.builtin.debug:
-      var: ansible_env.ANSIBLE_COLLECTIONS_PATHS
+        var: ansible_env.ANSIBLE_COLLECTIONS_PATHS
 
     - name: ansible-doc in EE
       ansible.builtin.command: ansible-doc -t module community.general.random_string
       register: doc
       changed_when: false
 
-    - debug: var=doc.stdout
+    - name: Show ansible-doc output
+      ansible.builtin.debug:
+        var: doc.stdout
 
     - name: Generate a random string (community.general)
       community.general.random_string:
         length: 12
       register: rnd
 
-    - name: Show random string
+    - name: Show random (dump everything to see structure)
       ansible.builtin.debug:
-        var: rnd.result
+        var: rnd
+
+    # 文字列だけ欲しい場合（どちらか入っている方を表示）
+    - name: Show random string (portable)
+      ansible.builtin.debug:
+        msg: "{{ rnd.random | default(rnd.result) }}"
 
     - name: Read root fs type (ansible.posix)
       ansible.posix.find_mounts:
